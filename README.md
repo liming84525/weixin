@@ -383,6 +383,10 @@ This project is licensed under the MIT license, see [LICENSE](LICENSE).
 
 ## 更新日志
 
+### Myonw - 微信小店
+
+- request 添加微信小店相关
+
 ### Version 0.5.4 - upcoming
 
 - 用户管理

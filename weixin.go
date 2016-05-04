@@ -134,6 +134,9 @@ type Request struct {
 	Precision    float32
 	Recognition  string
 	Status       string
+	OrderId      string
+	OrderStatus  string
+	ProductId    string
 }
 
 // Use to reply music message
