@@ -84,6 +84,7 @@ const (
 	weixinRedirectURL        = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect"
 	weixinUserAccessTokenURL = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	weixinJsApiTicketURL     = "https://api.weixin.qq.com/cgi-bin/ticket/getticket"
+	weixinShopUrl            = "https://api.weixin.qq.com/merchant/order/getbyid"
 	// Max retry count
 	retryMaxN = 3
 	// Reply format
@@ -100,6 +101,9 @@ const (
 	// QR scene request
 	requestQRScene      = `{"expire_seconds":%d,"action_name":"QR_SCENE","action_info":{"scene":{"scene_id":%d}}}`
 	requestQRLimitScene = `{"action_name":"QR_LIMIT_SCENE","action_info":{"scene":{"scene_id":%d}}}`
+
+	//weixinshop request
+	requestOrderInfo = `{"order_id": %s }`
 )
 
 // Common message header
@@ -205,6 +209,31 @@ type TmplData map[string]TmplItem
 type TmplItem struct {
 	Value string `json:"value,omitempty"`
 	Color string `json:"color,omitempty"`
+}
+
+type OrderInfo struct {
+	OrderId           string `json:"order_id,omitempty"`
+	OrderStatus       int    `json:"order_status, omitempty"`
+	OrderTotalPrice   int    `json:"order_total_price,omitempty"`
+	OrderCreateTime   int    `json:"order_create_time,omitempty"`
+	OrderExpressPrice int    `json:"order_express_price, omitempty"`
+	BuyerOpenid       string `json:"buyer_openid,omitempty"`
+	BuyerNick         string `json:"buyer_nick,omitempty"`
+	ReceiverName      string `json:"receiver_name omitempty"`
+	ReceiverProvince  string `json:"receiver_province, omitempty"`
+	ReceiverCity      string `json:"receiver_city,omitempty"`
+	ReceiverAddress   string `json:"receiver_address,omitempty"`
+	ReceiverMobile    string `json:"receiver_mobile,omitempty"`
+	ReceiverPhone     string `json:"receiver_phone,omitempty"`
+	ProductId         string `json:"product_id, omitempty"`
+	ProductName       string `json:"product_name,omitempty"`
+	ProductPrice      int    `json:"product_price,omitempty"`
+	ProductSku        string `json:"product_sku,omitempty"`
+	ProductCount      int    `json:"product_count,omitempty"`
+	ProductImg        string `json:"product_img,omitempty"`
+	DeliveryId        string `json:"delivery_id,omitempty"`
+	DeliveryCompany   string `json:"delivery_company,omitempty"`
+	TransId           string `json:"trans_id,omitempty"`
 }
 
 // Use to output reply
@@ -645,6 +674,23 @@ func (wx *Weixin) GetUserInfo(openid string) (*UserInfo, error) {
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (wx *Weixin) GetOrderInfo(orderid string) (*OrderInfo, error) {
+	resp, err := postRequest(weixinShopUrl+"?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderInfo, orderid)))
+	if err != nil {
+		return nil, err
+	}
+	var oinfo struct {
+		ErrCode int       `json:"errcode,omitempty"`
+		ErrMsg  string    `json:"errmsg,omitempty"`
+		Info    OrderInfo `json:"order, omitempty"`
+	}
+	err = json.Unmarshal(resp, &oinfo)
+	if err != nil {
+		return nil, err
+	}
+	return &oinfo.Info, nil
 }
 
 func (wx *Weixin) GetJsApiTicket() (string, error) {
