@@ -845,7 +845,7 @@ func createAccessToken(c chan accessToken, appid string, secret string, refresh 
 	token := accessToken{"", time.Now()}
 	c <- token
 	for {
-		if *refresh || ime.Since(token.expires).Seconds() >= 0 {
+		if *refresh || time.Since(token.expires).Seconds() >= 0 {
 			*refresh = false
 			log.Println("refreshing token...")
 			var expires time.Duration
