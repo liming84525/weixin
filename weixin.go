@@ -141,7 +141,7 @@ type Request struct {
 	OrderId      string
 	OrderStatus  string
 	ProductId    string
-	SkuInfo 		 string
+	SkuInfo      string
 }
 
 // Use to reply music message
@@ -691,7 +691,7 @@ func (wx *Weixin) GetOrderInfo(orderid string) (*OrderInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return oinfo.&Info, nil
+	return &oinfo.Info, nil
 }
 
 func (wx *Weixin) GetJsApiTicket() (string, error) {
@@ -845,8 +845,7 @@ func createAccessToken(c chan accessToken, appid string, secret string, refresh 
 	token := accessToken{"", time.Now()}
 	c <- token
 	for {
-		// remove (*refresh ||) seems have invalided auto updating access_token
-		if  time.Since(token.expires).Seconds() >= 0 {
+		if *refresh || ime.Since(token.expires).Seconds() >= 0 {
 			*refresh = false
 			log.Println("refreshing token...")
 			var expires time.Duration
