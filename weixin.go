@@ -84,7 +84,8 @@ const (
 	weixinRedirectURL        = "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect"
 	weixinUserAccessTokenURL = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	weixinJsApiTicketURL     = "https://api.weixin.qq.com/cgi-bin/ticket/getticket"
-	weixinShopUrl            = "https://api.weixin.qq.com/merchant/order/getbyid"
+	weixinShopUrl            = "https://api.weixin.qq.com/merchant/order"
+
 	// Max retry count
 	retryMaxN = 3
 	// Reply format
@@ -103,7 +104,8 @@ const (
 	requestQRLimitScene = `{"action_name":"QR_LIMIT_SCENE","action_info":{"scene":{"scene_id":%d}}}`
 
 	//weixinshop request
-	requestOrderInfo = `{"order_id": %s }`
+	requestOrderInfo  = `{"order_id": %s }`
+	requestOrderState = `{"state: %s"}`
 )
 
 // Common message header
@@ -350,9 +352,10 @@ func (wx *Weixin) RefreshAccessToken() {
 // Register request callback.
 func (wx *Weixin) HandleFunc(pattern string, handler HandlerFunc) {
 	regex, err := regexp.Compile(pattern)
+	defer recover(err)
 	if err != nil {
 		panic(err)
-		return
+		//return
 	}
 	route := &route{regex, handler}
 	wx.routes = append(wx.routes, route)
@@ -677,8 +680,8 @@ func (wx *Weixin) GetUserInfo(openid string) (*UserInfo, error) {
 	return &result, nil
 }
 
-func (wx *Weixin) GetOrderInfo(orderid string) (*OrderInfo, error) {
-	resp, err := postRequest(weixinShopUrl+"?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderInfo, orderid)))
+func (wx *Weixin) GetOrderInfoByState(state string) (*OrderInfo, error) {
+	resp, err := postRequest(weixinShopUrl+"/getbyfilter?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderState, orderid)))
 	if err != nil {
 		return nil, err
 	}
@@ -814,7 +817,7 @@ func authAccessToken(appid string, secret string) (string, time.Duration) {
 			if err := json.Unmarshal(body, &res); err != nil {
 				log.Println("Parse access token failed: ", err)
 			} else {
-				//log.Printf("AuthAccessToken token=%s expires_in=%d", res.AccessToken, res.ExpiresIn)
+				log.Printf("AuthAccessToken token=%s expires_in=%d", res.AccessToken, res.ExpiresIn)
 				return res.AccessToken, time.Duration(res.ExpiresIn * 1000 * 1000 * 1000)
 			}
 		}
@@ -845,7 +848,7 @@ func createAccessToken(c chan accessToken, appid string, secret string, refresh 
 	token := accessToken{"", time.Now()}
 	c <- token
 	for {
-		if *refresh || time.Since(token.expires).Seconds() >= 0 {
+		if *refresh || time.Since(token.expires).Seconds() >= -30 {
 			*refresh = false
 			log.Println("refreshing token...")
 			var expires time.Duration
@@ -921,6 +924,10 @@ func postRequest(reqURL string, c chan accessToken, data []byte) ([]byte, error)
 			case 0:
 				return reply, nil
 			case 42001: // access_token timeout and retry
+				log.Println("42001 access_token timeout and retry. should refresh token")
+				continue
+			case 40001: //
+				log.Println("40001 invalid credential, access_token is invalid or not latest")
 				continue
 			default:
 				return nil, errors.New(fmt.Sprintf("WeiXin send post request reply[%d]: %s", result.ErrorCode, result.ErrorMessage))
@@ -998,7 +1005,7 @@ func downloadMedia(c chan accessToken, mediaId string, writer io.Writer) error {
 			}
 			defer r.Body.Close()
 			if r.Header.Get("Content-Type") != "text/plain" {
-				_, err := io.Copy(writer, r.Body)
+				_, err = io.Copy(writer, r.Body)
 				return err
 			}
 			reply, err := ioutil.ReadAll(r.Body)
