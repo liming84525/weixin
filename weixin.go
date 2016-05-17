@@ -679,7 +679,7 @@ func (wx *Weixin) GetUserInfo(openid string) (*UserInfo, error) {
 	return &result, nil
 }
 
-func (wx *Weixin) GetOrderInfoByState(state string) (*OrderInfo, error) {
+func (wx *Weixin) GetOrderInfoByState(state string) ([]OrderInfo, error) {
 	resp, err := postRequest(weixinShopUrl+"/getbyfilter?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderState, state)))
 	if err != nil {
 		return nil, err
@@ -692,7 +692,7 @@ func (wx *Weixin) GetOrderInfoByState(state string) (*OrderInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &oinfo.Info, nil
+	return oinfo.Info, nil
 }
 
 func (wx *Weixin) GetJsApiTicket() (string, error) {
