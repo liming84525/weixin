@@ -352,10 +352,9 @@ func (wx *Weixin) RefreshAccessToken() {
 // Register request callback.
 func (wx *Weixin) HandleFunc(pattern string, handler HandlerFunc) {
 	regex, err := regexp.Compile(pattern)
-	defer recover(err)
 	if err != nil {
 		panic(err)
-		//return
+		return
 	}
 	route := &route{regex, handler}
 	wx.routes = append(wx.routes, route)
@@ -681,14 +680,13 @@ func (wx *Weixin) GetUserInfo(openid string) (*UserInfo, error) {
 }
 
 func (wx *Weixin) GetOrderInfoByState(state string) (*OrderInfo, error) {
-	resp, err := postRequest(weixinShopUrl+"/getbyfilter?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderState, orderid)))
+	resp, err := postRequest(weixinShopUrl+"/getbyfilter?access_token=", wx.tokenChan, []byte(fmt.Sprintf(requestOrderState, state)))
 	if err != nil {
 		return nil, err
 	}
 	var oinfo struct {
-		ErrCode int       `json:"errcode,omitempty"`
-		ErrMsg  string    `json:"errmsg,omitempty"`
-		Info    OrderInfo `json:"order, omitempty"`
+		response
+		Info []OrderInfo `json:"order_list, omitempty"`
 	}
 	err = json.Unmarshal(resp, &oinfo)
 	if err != nil {
